@@ -22,7 +22,7 @@ spec:
       serviceAccountName: {{ include "scaleway-webhook.fullname" . }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - --tls-cert-file=/tls/tls.crt
@@ -30,6 +30,11 @@ spec:
           env:
             - name: GROUP_NAME
               value: {{ .Values.groupName | quote }}
+          {{ if and .Values.secret.accessKey .Values.secret.secretKey }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.secret.name }}
+          {{ end }}
           ports:
             - name: https
               containerPort: 443

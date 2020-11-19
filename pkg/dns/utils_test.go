@@ -107,16 +107,7 @@ func Test_getDomainAPI(t *testing.T) {
 			errMessage: "failed to initialize scaleway client: scaleway-sdk-go: access key cannot be empty",
 		},
 		{
-			ch: &v1alpha1.ChallengeRequest{
-				AllowAmbientCredentials: true,
-			},
-			shouldErr:  true,
-			errMessage: "failed to initialize scaleway client: scaleway-sdk-go: access key cannot be empty",
-		},
-		{
-			ch: &v1alpha1.ChallengeRequest{
-				AllowAmbientCredentials: true,
-			},
+			ch: &v1alpha1.ChallengeRequest{},
 			env: map[string]string{
 				scw.ScwAccessKeyEnv: "SCWXXXXXXXXXXXXXXXXX",
 			},
@@ -124,9 +115,7 @@ func Test_getDomainAPI(t *testing.T) {
 			errMessage: "failed to initialize scaleway client: scaleway-sdk-go: secret key cannot be empty",
 		},
 		{
-			ch: &v1alpha1.ChallengeRequest{
-				AllowAmbientCredentials: true,
-			},
+			ch: &v1alpha1.ChallengeRequest{},
 			env: map[string]string{
 				scw.ScwAccessKeyEnv: "SCWXXXXXXXXXXXXXXXXX",
 				scw.ScwSecretKeyEnv: "66666666-7777-8888-9999-000000000000",
@@ -193,7 +182,7 @@ func Test_getDomainAPI(t *testing.T) {
 				t.Errorf("expected error %s, got %s", test.errMessage, err.Error())
 			}
 		} else if test.shouldErr {
-			t.Errorf("didn't get an error where an error was expected")
+			t.Errorf("didn't get an error where an error was expected with message %s", test.errMessage)
 		}
 		for k := range test.env {
 			os.Unsetenv(k)
