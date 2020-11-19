@@ -6,11 +6,15 @@ certManager:
 
 image:
   repository: scaleway/cert-manager-webhook-scaleway
-  tag: master
   pullPolicy: IfNotPresent
 
 nameOverride: ""
 fullnameOverride: ""
+
+secret:
+  accessKey: ""
+  secretKey: ""
+  name: scaleway-webhook-secret
 
 service:
   type: ClusterIP

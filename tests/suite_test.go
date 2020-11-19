@@ -27,11 +27,10 @@ func TestRunsSuite(t *testing.T) {
 
 	fixture := dns.NewFixture(&scalewayDns.ProviderSolver{},
 		dns.SetResolvedZone(zone),
-		dns.SetAllowAmbientCredentials(false),
+		dns.SetAllowAmbientCredentials(true),
 		dns.SetBinariesPath(currentDir+"/kubebuilder/bin"),
 		dns.SetManifestPath(currentDir+"/testdata"),
 		dns.SetStrict(true),
-		dns.SetDNSServer("195.154.228.249:53"),
 	)
 
 	fixture.RunConformance(t)

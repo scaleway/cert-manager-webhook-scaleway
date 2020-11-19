@@ -35,13 +35,8 @@ func (p *ProviderSolver) getDomainAPI(ch *v1alpha1.ChallengeRequest) (*domain.AP
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	var accessKey string
-	var secretKey string
-
-	if ch.AllowAmbientCredentials {
-		accessKey = os.Getenv(scw.ScwAccessKeyEnv)
-		secretKey = os.Getenv(scw.ScwSecretKeyEnv)
-	}
+	accessKey := os.Getenv(scw.ScwAccessKeyEnv)
+	secretKey := os.Getenv(scw.ScwSecretKeyEnv)
 
 	if config.AccessKey != nil && config.SecretKey != nil {
 		accessKeySecret, err := p.client.CoreV1().Secrets(ch.ResourceNamespace).Get(context.Background(), config.AccessKey.Name, metav1.GetOptions{})
