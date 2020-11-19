@@ -1,0 +1,10 @@
+{
+  "accessKeySecretRef": {
+    "name": "scaleway-secret",
+    "key": "SCW_ACCESS_KEY"
+  },
+  "secretKeySecretRef": {
+    "name": "scaleway-secret",
+    "key": "SCW_SECRET_KEY"
+  }
+}
