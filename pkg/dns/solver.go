@@ -1,9 +1,7 @@
 package dns
 
 import (
-	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -11,11 +9,8 @@ import (
 	domain "github.com/scaleway/scaleway-sdk-go/api/domain/v2beta1"
 	"github.com/scaleway/scaleway-sdk-go/scw"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	"github.com/scaleway/cert-manager-webhook-scaleway/pkg/util"
 )
 
 const (
@@ -25,7 +20,7 @@ const (
 // ProviderSolver is the struct implementing the webhook.Solver interface
 // for Scaleway DNS
 type ProviderSolver struct {
-	client *kubernetes.Clientset
+	client kubernetes.Interface
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -109,58 +104,6 @@ func (p *ProviderSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	}
 
 	return nil
-}
-
-func (p *ProviderSolver) getDomainAPI(ch *v1alpha1.ChallengeRequest) (*domain.API, error) {
-	config, err := loadConfig(ch.Config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
-	}
-
-	var accessKey string
-	var secretKey string
-
-	if ch.AllowAmbientCredentials {
-		accessKey = os.Getenv(scw.ScwAccessKeyEnv)
-		secretKey = os.Getenv(scw.ScwSecretKeyEnv)
-	}
-
-	if config.AccessKey != nil && config.SecretKey != nil {
-		accessKeySecret, err := p.client.CoreV1().Secrets(ch.ResourceNamespace).Get(context.Background(), config.AccessKey.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("could not get secret %s: %w", config.AccessKey.Name, err)
-		}
-		secretKeySecret, err := p.client.CoreV1().Secrets(ch.ResourceNamespace).Get(context.Background(), config.SecretKey.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("could not get secret %s: %w", config.SecretKey.Name, err)
-		}
-
-		accessKeyData, ok := accessKeySecret.Data[config.AccessKey.Key]
-		if !ok {
-			return nil, fmt.Errorf("could not get key %s in secret %s", config.AccessKey.Key, config.AccessKey.Name)
-		}
-
-		secretKeyData, ok := secretKeySecret.Data[config.SecretKey.Key]
-		if !ok {
-			return nil, fmt.Errorf("could not get key %s in secret %s", config.SecretKey.Key, config.SecretKey.Name)
-		}
-
-		accessKey = string(accessKeyData)
-		secretKey = string(secretKeyData)
-	}
-
-	scwClient, err := scw.NewClient(
-		scw.WithEnv(),
-		scw.WithAuth(accessKey, secretKey),
-		scw.WithUserAgent("cert-manager-webhook-scaleway/"+util.GetVersion().Version),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize scaleway client: %w", err)
-	}
-
-	domainAPI := domain.NewAPI(scwClient)
-
-	return domainAPI, nil
 }
 
 // Initialize will be called when the webhook first starts.
