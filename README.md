@@ -27,7 +27,7 @@ git clone https://github.com/scaleway/cert-manager-webhook-scaleway.git
 ```bash
 helm install scaleway-webhook deploy/scaleway-webhook
 ```
-- Aleternatively, you can install the webhook with default credentials with: 
+- Alternatively, you can install the webhook with default credentials with: 
 ```bash
 helm install scaleway-webhook deploy/scaleway-webhook --set secret.accessKey=<YOUR-ACCESS-KEY> --set secret.secretKey=<YOUR-SECRET_KEY>
 ```
