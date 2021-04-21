@@ -29,7 +29,7 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   secretName: {{ include "scaleway-webhook.rootCACertificate" . }}
-  duration: 43800h # 5y
+  duration: {{ .Values.pki.caDuration }}
   issuerRef:
     name: {{ include "scaleway-webhook.selfSignedIssuer" . }}
   commonName: "ca.scaleway-webhook.cert-manager"
@@ -67,7 +67,7 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   secretName: {{ include "scaleway-webhook.servingCertificate" . }}
-  duration: 8760h # 1y
+  duration: {{ .Values.pki.servingCertificateDuration }}
   issuerRef:
     name: {{ include "scaleway-webhook.rootCAIssuer" . }}
   dnsNames:
