@@ -1,6 +1,6 @@
-# Cert Manager Webhook for Scaleway DNS
+# cert-manager Webhook for Scaleway DNS
 
-Cert Manager Webhook for Scaleway DNS is a ACME webhook for [cert-manager](https://cert-manager.io/) allowing users to use [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/) for DNS01 challenge.
+cert-manager Webhook for Scaleway DNS is a ACME [webhook](https://cert-manager.io/docs/configuration/acme/dns01/webhook/) for [cert-manager](https://cert-manager.io/) allowing users to use [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/) for DNS01 challenge.
 
 ## Getting started
 
@@ -10,10 +10,7 @@ Cert Manager Webhook for Scaleway DNS is a ACME webhook for [cert-manager](https
 - A valid domain configured on [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/)
 - A Kubernetes cluster (v1.19+ recommended)
 - [Helm 3](https://helm.sh/) [installed](https://helm.sh/docs/intro/install/) on your computer
-- [cert-manager](https://github.com/jetstack/cert-manager) deployed on the cluster:
-```bash
-kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.4/cert-manager.yaml
-```
+- cert-manager [deployed](https://cert-manager.io/docs/installation/) on the cluster
 
 ### Installing
 
