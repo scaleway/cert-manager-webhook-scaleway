@@ -7,6 +7,7 @@ certManager:
 image:
   repository: scaleway/cert-manager-webhook-scaleway
   pullPolicy: IfNotPresent
+  imagePullSecrets: []
 
 nameOverride: ""
 fullnameOverride: ""
