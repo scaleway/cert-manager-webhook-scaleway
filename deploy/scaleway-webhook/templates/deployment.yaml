@@ -20,7 +20,7 @@ spec:
         release: {{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "scaleway-webhook.fullname" . }}
-      {{- with .Values.server.imagePullSecrets | default .Values.global.imagePullSecrets }}
+      {{- with .Values.image.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
