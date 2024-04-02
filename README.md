@@ -8,7 +8,7 @@ cert-manager Webhook for Scaleway DNS is a ACME [webhook](https://cert-manager.i
 
 - A [Scaleway Access Key and a Scaleway Secret Key](https://www.scaleway.com/en/docs/generate-api-keys/)
 - A valid domain configured on [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/)
-- A Kubernetes cluster (v1.19+ recommended)
+- A Kubernetes cluster (v1.22+ recommended)
 - [Helm 3](https://helm.sh/) [installed](https://helm.sh/docs/intro/install/) on your computer
 - cert-manager [deployed](https://cert-manager.io/docs/installation/) on the cluster
 
