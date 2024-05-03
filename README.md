@@ -8,28 +8,36 @@ cert-manager Webhook for Scaleway DNS is a ACME [webhook](https://cert-manager.i
 
 - A [Scaleway Access Key and a Scaleway Secret Key](https://www.scaleway.com/en/docs/generate-api-keys/)
 - A valid domain configured on [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/)
-- A Kubernetes cluster (v1.22+ recommended)
+- A Kubernetes cluster (v1.29+ recommended)
 - [Helm 3](https://helm.sh/) [installed](https://helm.sh/docs/intro/install/) on your computer
 - cert-manager [deployed](https://cert-manager.io/docs/installation/) on the cluster
 
 ### Installing
 
-Once everything is set up, you can now install the Scaleway Webhook:
-- Clone this repository: 
+> Attention: starting from `0.1.0` the chart's name is now named `scaleway-certmanager-webhook`, if upgrading from an older version you might want to add `--set nameOverride=scaleway-webhook` 
+
+- Add scaleway's helm chart repository:
+
 ```bash
-git clone https://github.com/scaleway/cert-manager-webhook-scaleway.git
+helm repo add scaleway https://helm.scw.cloud/
+helm repo update
 ```
 
-- Run:
+- Install the chart
+
 ```bash
-helm install scaleway-webhook deploy/scaleway-webhook
+helm install scaleway-webhook scaleway/scaleway-certmanager-webhook
 ```
+
 - Alternatively, you can install the webhook with default credentials with: 
+
 ```bash
-helm install scaleway-webhook deploy/scaleway-webhook --set secret.accessKey=<YOUR-ACCESS-KEY> --set secret.secretKey=<YOUR-SECRET_KEY>
+helm install scaleway-webhook scaleway/scaleway-certmanager-webhook --set secret.accessKey=<YOUR-ACCESS-KEY> --set secret.secretKey=<YOUR-SECRET_KEY>
 ```
 
 The Scaleway Webhook is now installed! :tada:
+
+> Refer to the chart's [documentation](https://github.com/scaleway/helm-charts/blob/master/charts/scaleway-certmanager-webhook/README.md) for more configuration options.
 
 ### How to use it
 
