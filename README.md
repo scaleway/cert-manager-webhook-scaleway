@@ -26,18 +26,21 @@ helm repo update
 - Install the chart
 
 ```bash
-helm install scaleway-webhook scaleway/scaleway-certmanager-webhook
+helm install scaleway-certmanager-webhook scaleway/scaleway-certmanager-webhook
 ```
 
 - Alternatively, you can install the webhook with default credentials with: 
 
 ```bash
-helm install scaleway-webhook scaleway/scaleway-certmanager-webhook --set secret.accessKey=<YOUR-ACCESS-KEY> --set secret.secretKey=<YOUR-SECRET_KEY>
+helm install scaleway-certmanager-webhook scaleway/scaleway-certmanager-webhook --set secret.accessKey=<YOUR-ACCESS-KEY> --set secret.secretKey=<YOUR-SECRET_KEY>
 ```
 
 The Scaleway Webhook is now installed! :tada:
 
 > Refer to the chart's [documentation](https://github.com/scaleway/helm-charts/blob/master/charts/scaleway-certmanager-webhook/README.md) for more configuration options.
+
+> Alternatively, you may use the provided bundle for a basic install in the cert-manager namespace:
+> `kubectl apply -f https://raw.githubusercontent.com/scaleway/cert-manager-webhook-scaleway/main/deploy/bundle.yaml`
 
 ### How to use it
 

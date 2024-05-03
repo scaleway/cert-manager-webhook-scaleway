@@ -1,0 +1,255 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scaleway-certmanager-webhook
+  labels:
+    app: scaleway-certmanager-webhook
+---
+# Grant cert-manager permission to validate using our apiserver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scaleway-certmanager-webhook:domain-solver
+  labels:
+    app: scaleway-certmanager-webhook
+rules:
+  - apiGroups:
+      - acme.scaleway.com
+    resources:
+      - '*'
+    verbs:
+      - 'create'
+---
+# apiserver gets the auth-delegator role to delegate auth decisions to
+# the core apiserver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scaleway-certmanager-webhook:auth-delegator
+  labels:
+    app: scaleway-certmanager-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: scaleway-certmanager-webhook
+    namespace: cert-manager
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scaleway-certmanager-webhook:domain-solver
+  labels:
+    app: scaleway-certmanager-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scaleway-certmanager-webhook:domain-solver
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: cert-manager
+    namespace: cert-manager
+---
+# Grant the webhook permission to read the secrets containing the credentials
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: scaleway-certmanager-webhook:secrets-reader
+  namespace: cert-manager
+  labels:
+    app: scaleway-certmanager-webhook
+rules:
+  - apiGroups:
+    - ''
+    resources:
+    - 'secrets'
+    verbs:
+    - 'get'
+---
+# Grant the webhook permission to read the secrets containing the credentials
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scaleway-certmanager-webhook:secrets-reader
+  namespace: cert-manager
+  labels:
+    app: scaleway-certmanager-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: scaleway-certmanager-webhook:secrets-reader
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: scaleway-certmanager-webhook
+    namespace: cert-manager
+---
+# Grant the webhook permission to read the ConfigMap containing the Kubernetes
+# apiserver's requestheader-ca-certificate.
+# This ConfigMap is automatically created by the Kubernetes apiserver.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scaleway-certmanager-webhook:webhook-authentication-reader
+  namespace: kube-system
+  labels:
+    app: scaleway-certmanager-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - apiGroup: ""
+    kind: ServiceAccount
+    name: scaleway-certmanager-webhook
+    namespace: cert-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scaleway-certmanager-webhook
+  labels:
+    app: scaleway-certmanager-webhook
+spec:
+  type: ClusterIP
+  ports:
+    - port: 443
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    app: scaleway-certmanager-webhook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scaleway-certmanager-webhook
+  labels:
+    app: scaleway-certmanager-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scaleway-certmanager-webhook
+  template:
+    metadata:
+      labels:
+        app: scaleway-certmanager-webhook
+    spec:
+      serviceAccountName: scaleway-certmanager-webhook
+      containers:
+        - name: scaleway-certmanager-webhook
+          image: "scaleway/cert-manager-webhook-scaleway:v0.1.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --tls-cert-file=/tls/tls.crt
+            - --tls-private-key-file=/tls/tls.key
+          env:
+            - name: GROUP_NAME
+              value: "acme.scaleway.com"
+          
+          ports:
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: https
+          readinessProbe:
+            timeoutSeconds: 5
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: https
+          volumeMounts:
+            - name: certs
+              mountPath: /tls
+              readOnly: true
+          resources:
+            {}
+      volumes:
+        - name: certs
+          secret:
+            secretName: scaleway-certmanager-webhook-webhook-tls
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1alpha1.acme.scaleway.com
+  labels:
+    app: scaleway-certmanager-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: "cert-manager/scaleway-certmanager-webhook-webhook-tls"
+spec:
+  group: acme.scaleway.com
+  groupPriorityMinimum: 1000
+  versionPriority: 15
+  service:
+    name: scaleway-certmanager-webhook
+    namespace: cert-manager
+  version: v1alpha1
+---
+# Generate a CA Certificate used to sign certificates for the webhook
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: scaleway-certmanager-webhook-ca
+  namespace: "cert-manager"
+  labels:
+    app: scaleway-certmanager-webhook
+spec:
+  secretName: scaleway-certmanager-webhook-ca
+  duration: 43800h
+  issuerRef:
+    name: scaleway-certmanager-webhook-selfsign
+  commonName: "ca.scaleway-webhook.cert-manager"
+  isCA: true
+---
+# Finally, generate a serving certificate for the webhook to use
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: scaleway-certmanager-webhook-webhook-tls
+  namespace: "cert-manager"
+  labels:
+    app: scaleway-certmanager-webhook
+spec:
+  secretName: scaleway-certmanager-webhook-webhook-tls
+  duration: 8760h
+  issuerRef:
+    name: scaleway-certmanager-webhook-ca
+  dnsNames:
+  - scaleway-certmanager-webhook
+  - scaleway-certmanager-webhook.cert-manager
+  - scaleway-certmanager-webhook.cert-manager.svc
+---
+# Create a selfsigned Issuer, in order to create a root CA certificate for
+# signing webhook serving certificates
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: scaleway-certmanager-webhook-selfsign
+  namespace: "cert-manager"
+  labels:
+    app: scaleway-certmanager-webhook
+spec:
+  selfSigned: {}
+---
+# Create an Issuer that uses the above generated CA certificate to issue certs
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: scaleway-certmanager-webhook-ca
+  namespace: "cert-manager"
+  labels:
+    app: scaleway-certmanager-webhook
+spec:
+  ca:
+    secretName: scaleway-certmanager-webhook-ca
