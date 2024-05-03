@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/jetstack/cert-manager/pkg/acme/webhook/cmd"
+	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 
 	"github.com/scaleway/cert-manager-webhook-scaleway/pkg/dns"
 )

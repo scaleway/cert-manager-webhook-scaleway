@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 package tests
@@ -6,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jetstack/cert-manager/test/acme/dns"
+	dns "github.com/cert-manager/cert-manager/test/acme"
 
 	scalewayDns "github.com/scaleway/cert-manager-webhook-scaleway/pkg/dns"
 )
