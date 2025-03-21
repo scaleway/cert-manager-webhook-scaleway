@@ -1,11 +1,10 @@
 package dns
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
-// ProviderConfig represents the config used for Scaleway DNS
+// ProviderConfig represents the config used for Bunny DNS
 type ProviderConfig struct {
-	AccessKey *v1.SecretKeySelector `json:"accessKeySecretRef,omitempty"`
-	SecretKey *v1.SecretKeySelector `json:"secretKeySecretRef,omitempty"`
+	ApiKey *v1.SecretKeySelector `json:"apiKeySecretRef,omitempty"`
 }

@@ -4,12 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 
+	"github.com/arbreagile/cert-manager-webhook-bunny/pkg/dns/internal/ptr"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
-	"github.com/scaleway/cert-manager-webhook-scaleway/pkg/util"
-	domain "github.com/scaleway/scaleway-sdk-go/api/domain/v2beta1"
-	"github.com/scaleway/scaleway-sdk-go/scw"
+	"github.com/nrdcg/bunny-go"
 	extapi "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,49 +27,53 @@ func loadConfig(cfgJSON *extapi.JSON) (ProviderConfig, error) {
 	return cfg, nil
 }
 
-func (p *ProviderSolver) getDomainAPI(ch *v1alpha1.ChallengeRequest) (*domain.API, error) {
+func (p *ProviderSolver) Client(ch *v1alpha1.ChallengeRequest) (*bunny.Client, error) {
+	if p.client != nil {
+		return p.client, nil
+	}
+
 	config, err := loadConfig(ch.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, err
 	}
 
-	accessKey := os.Getenv(scw.ScwAccessKeyEnv)
-	secretKey := os.Getenv(scw.ScwSecretKeyEnv)
-
-	if config.AccessKey != nil && config.SecretKey != nil {
-		accessKeySecret, err := p.client.CoreV1().Secrets(ch.ResourceNamespace).Get(context.Background(), config.AccessKey.Name, metav1.GetOptions{})
+	if config.ApiKey != nil {
+		apiKeySecret, err := p.k8sClient.CoreV1().Secrets(ch.ResourceNamespace).Get(context.Background(), config.ApiKey.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("could not get secret %s: %w", config.AccessKey.Name, err)
+			return nil, fmt.Errorf("could not get secret %s: %w", config.ApiKey.Name, err)
 		}
-		secretKeySecret, err := p.client.CoreV1().Secrets(ch.ResourceNamespace).Get(context.Background(), config.SecretKey.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("could not get secret %s: %w", config.SecretKey.Name, err)
-		}
-
-		accessKeyData, ok := accessKeySecret.Data[config.AccessKey.Key]
+		apiKeyData, ok := apiKeySecret.Data[config.ApiKey.Key]
 		if !ok {
-			return nil, fmt.Errorf("could not get key %s in secret %s", config.AccessKey.Key, config.AccessKey.Name)
+			return nil, fmt.Errorf("could not get key %s in secret %s", config.ApiKey.Key, config.ApiKey.Name)
 		}
+		apiKey := string(apiKeyData)
 
-		secretKeyData, ok := secretKeySecret.Data[config.SecretKey.Key]
-		if !ok {
-			return nil, fmt.Errorf("could not get key %s in secret %s", config.SecretKey.Key, config.SecretKey.Name)
-		}
+		p.client = bunny.NewClient(apiKey)
+		return p.client, nil
+	} else {
+		return nil, fmt.Errorf("no api key provided in secrets")
+	}
+}
 
-		accessKey = string(accessKeyData)
-		secretKey = string(secretKeyData)
+func findZoneID(client *bunny.Client, ctx context.Context, domainName string) (int64, error) {
+	if domainName == "" {
+		return 0, fmt.Errorf("empty domain name")
 	}
 
-	scwClient, err := scw.NewClient(
-		scw.WithEnv(),
-		scw.WithAuth(accessKey, secretKey),
-		scw.WithUserAgent("cert-manager-webhook-scaleway/"+util.GetVersion().Version),
-	)
+	zones, err := client.DNSZone.List(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize scaleway client: %w", err)
+		return 0, fmt.Errorf("failed to list DNS zones: %w", err)
 	}
 
-	domainAPI := domain.NewAPI(scwClient)
+	zoneMap := make(map[string]int64)
+	for _, zone := range zones.Items {
+		zoneMap[ptr.Deref(zone.Domain)] = ptr.Deref(zone.ID)
+	}
 
-	return domainAPI, nil
+	zoneID, found := zoneMap[domainName]
+	if !found {
+		return 0, fmt.Errorf("DNS zone not found for domain: %s", domainName)
+	}
+
+	return zoneID, nil
 }

@@ -7,9 +7,8 @@ import (
 	"os"
 	"testing"
 
+	bunnyDns "github.com/arbreagile/cert-manager-webhook-bunny/pkg/dns"
 	dns "github.com/cert-manager/cert-manager/test/acme"
-
-	scalewayDns "github.com/scaleway/cert-manager-webhook-scaleway/pkg/dns"
 )
 
 var (
@@ -26,7 +25,7 @@ func TestRunsSuite(t *testing.T) {
 		t.Fatalf("error getting current working dir: %s", err.Error())
 	}
 
-	fixture := dns.NewFixture(&scalewayDns.ProviderSolver{},
+	fixture := dns.NewFixture(&bunnyDns.ProviderSolver{},
 		dns.SetResolvedZone(zone),
 		dns.SetAllowAmbientCredentials(true),
 		dns.SetBinariesPath(currentDir+"/kubebuilder/bin"),

@@ -1,70 +1,63 @@
-# cert-manager Webhook for Scaleway DNS
+# cert-manager Webhook for Bunny DNS
 
-cert-manager Webhook for Scaleway DNS is a ACME [webhook](https://cert-manager.io/docs/configuration/acme/dns01/webhook/) for [cert-manager](https://cert-manager.io/) allowing users to use [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/) for DNS01 challenge.
+cert-manager Webhook for Bunny DNS is a ACME [webhook](https://cert-manager.io/docs/configuration/acme/dns01/webhook/) for [cert-manager](https://cert-manager.io/) allowing users to use [Bunny DNS](https://bunny.net/dns/) for DNS01 challenge.
 
 ## Getting started
 
 ### Prerequisites
 
-- A [Scaleway Access Key and a Scaleway Secret Key](https://www.scaleway.com/en/docs/generate-api-keys/)
-- A valid domain configured on [Scaleway DNS](https://www.scaleway.com/en/docs/scaleway-dns/)
+- A [Bunny API Key](https://docs.bunny.net/reference/bunnynet-api-overview)
+- A valid domain configured on [Bunny DNS](https://bunny.net/dns/)
 - A Kubernetes cluster (v1.29+ recommended)
 - [Helm 3](https://helm.sh/) [installed](https://helm.sh/docs/intro/install/) on your computer
 - cert-manager [deployed](https://cert-manager.io/docs/installation/) on the cluster
 
 ### Installing
 
-> Attention: starting from `0.1.0` the chart's name is now named `scaleway-certmanager-webhook`, if upgrading from an older version you might want to add `--set nameOverride=scaleway-webhook` 
+> Attention: starting from `0.1.0` the chart's name is now named `cert-manager-webhook-bunny`. 
 
-- Add scaleway's helm chart repository:
+- Add arbreagile's helm chart repository:
 
 ```bash
-helm repo add scaleway https://helm.scw.cloud/
+helm repo add arbreagile https://helm.arbreagile.eu/
 helm repo update
 ```
 
 - Install the chart
 
 ```bash
-helm install scaleway-certmanager-webhook scaleway/scaleway-certmanager-webhook
+helm install cert-manager-webhook-bunny arbreagile/cert-manager-webhook-bunny
 ```
 
-- Alternatively, you can install the webhook with default credentials with: 
+The Bunny Webhook is now installed! :tada:
 
-```bash
-helm install scaleway-certmanager-webhook scaleway/scaleway-certmanager-webhook --set secret.accessKey=<YOUR-ACCESS-KEY> --set secret.secretKey=<YOUR-SECRET_KEY>
-```
-
-The Scaleway Webhook is now installed! :tada:
-
-> Refer to the chart's [documentation](https://github.com/scaleway/helm-charts/blob/master/charts/scaleway-certmanager-webhook/README.md) for more configuration options.
+> Refer to the chart's [documentation](https://github.com/arbreagile/helm-charts/blob/master/charts/cert-manager-webhook-bunny/README.md) for more configuration options.
 
 > Alternatively, you may use the provided bundle for a basic install in the cert-manager namespace:
-> `kubectl apply -f https://raw.githubusercontent.com/scaleway/cert-manager-webhook-scaleway/main/deploy/bundle.yaml`
+> `kubectl apply -f https://raw.githubusercontent.com/arbreagile/cert-manager-webhook-arbreagile/main/deploy/bundle.yaml`
 
 ### How to use it
 
 **Note**: It uses the [cert-manager webhook system](https://cert-manager.io/docs/configuration/acme/dns01/webhook/). Everything after the issuer is configured is just cert-manager. You can find out more in [their documentation](https://cert-manager.io/docs/usage/).
 
 Now that the webhook is installed, here is how to use it.
-Let's say you need a certificate for `example.com` (should be registered in Scaleway DNS).
+Let's say you need a certificate for `example.com` (should be registered in Bunny DNS).
 
-First step is to create a secret containing the Scaleway Access and Secret keys. Create the `scaleway-secret.yaml` file with the following content:
+First step is to create a secret containing the Bunny Access and Secret keys. Create the `bunny-secret.yaml` file with the following content:
 (Only needed if you don't have default credentials as seen above).
 ```yaml
 apiVersion: v1
-stringData:
-  SCW_ACCESS_KEY: <YOUR-SCALEWAY-ACCESS-KEY>
-  SCW_SECRET_KEY: <YOUR-SCALEWAY-SECRET-KEY>
+data:
+  api-key: <BUNNY-API-KEY>
 kind: Secret
 metadata:
-  name: scaleway-secret
+  name: bunny-secret
 type: Opaque
 ```
 
 And run:
 ```bash
-kubectl create -f scaleway-secret.yaml
+kubectl create -f bunny-secret.yaml
 ```
 
 Next step is to create a cert-manager `Issuer`. Create a `issuer.yaml` file with the following content:
@@ -72,7 +65,7 @@ Next step is to create a cert-manager `Issuer`. Create a `issuer.yaml` file with
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: my-scaleway-issuer
+  name: my-bunny-issuer
 spec:
   acme:
     email: my-user@example.com
@@ -81,20 +74,17 @@ spec:
     # for production use this URL instead
     # server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
-      name: my-scaleway-private-key-secret
+      name: my-bunny-private-key-secret
     solvers:
     - dns01:
         webhook:
-          groupName: acme.scaleway.com
-          solverName: scaleway
+          groupName: acme.arbreagile.eu
+          solverName: bunny
           config:
             # Only needed if you don't have default credentials as seen above.
-            accessKeySecretRef:
-              key: SCW_ACCESS_KEY
-              name: scaleway-secret
-            secretKeySecretRef:
-              key: SCW_SECRET_KEY
-              name: scaleway-secret
+            apiKeySecretRef:
+              key: BUNNY-API-KEY
+              name: bunny-secret
 ```
 
 And run:
@@ -112,7 +102,7 @@ spec:
   dnsNames:
   - example.com
   issuerRef:
-    name: my-scaleway-issuer
+    name: my-bunny-issuer
   secretName: example-com-tls
 ```
 
@@ -133,8 +123,8 @@ Your certificate is now available in the `example-com-tls` secret!
 ## Integration testing
 
 Before running the test, you need:
-- A valid domain on Scaleway DNS (here `example.com`)
-- The variables `SCW_ACCESS_KEY` and `SCW_SECRET_KEY` valid and in the environment
+- A valid domain on Bunny DNS (here `example.com`)
+- The variable `BUNNY-API-KEY` valid and in the environment
 
 In order to run the integration tests, run:
 ```bash

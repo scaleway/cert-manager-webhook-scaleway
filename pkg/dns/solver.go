@@ -1,26 +1,28 @@
 package dns
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/arbreagile/cert-manager-webhook-bunny/pkg/dns/internal/ptr"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
-	domain "github.com/scaleway/scaleway-sdk-go/api/domain/v2beta1"
-	"github.com/scaleway/scaleway-sdk-go/scw"
-
+	"github.com/nrdcg/bunny-go"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
 const (
-	providerName = "scaleway"
+	providerName = "bunny"
 )
 
 // ProviderSolver is the struct implementing the webhook.Solver interface
-// for Scaleway DNS
+// for Bunny DNS
 type ProviderSolver struct {
-	client kubernetes.Interface
+	k8sClient kubernetes.Interface
+	client    *bunny.Client
+	recordID  *int64
 }
 
 // Name is used as the name for this DNS solver when referencing it on the ACME
@@ -35,39 +37,27 @@ func (p *ProviderSolver) Name() string {
 // cert-manager itself will later perform a self check to ensure that the
 // solver has correctly configured the DNS provider.
 func (p *ProviderSolver) Present(ch *v1alpha1.ChallengeRequest) error {
-	domainAPI, err := p.getDomainAPI(ch)
+	ctx := context.Background()
+	domainName := ptr.Pointer(strings.TrimSuffix(ch.ResolvedZone, "."))
+	recordOptions := &bunny.AddOrUpdateDNSRecordOptions{
+		Type:  ptr.Pointer(bunny.DNSRecordTypeTXT),
+		Name:  ptr.Pointer(strings.TrimSuffix(ch.ResolvedFQDN, ptr.Deref(domainName))),
+		Value: ptr.Pointer(strconv.Quote(ch.Key)),
+		TTL:   ptr.Pointer(int32(60)),
+	}
+	client, err := p.Client(ch)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get bunny client: %w", err)
 	}
-
-	request := &domain.UpdateDNSZoneRecordsRequest{
-		DNSZone: strings.TrimSuffix(ch.ResolvedZone, "."),
-		Changes: []*domain.RecordChange{
-			{
-				Set: &domain.RecordChangeSet{
-					IDFields: &domain.RecordIdentifier{
-						Name: strings.TrimSuffix(strings.TrimSuffix(ch.ResolvedFQDN, ch.ResolvedZone), "."),
-						Type: domain.RecordTypeTXT,
-						Data: scw.StringPtr(strconv.Quote(ch.Key)),
-					},
-					Records: []*domain.Record{
-						{
-							Name: strings.TrimSuffix(strings.TrimSuffix(ch.ResolvedFQDN, ch.ResolvedZone), "."),
-							Data: strconv.Quote(ch.Key),
-							Type: domain.RecordTypeTXT,
-							TTL:  60,
-						},
-					},
-				},
-			},
-		},
-	}
-
-	_, err = domainAPI.UpdateDNSZoneRecords(request)
+	zoneID, err := findZoneID(client, ctx, ptr.Deref(domainName))
 	if err != nil {
-		return fmt.Errorf("failed to update DNS zone recrds: %w", err)
+		return fmt.Errorf("bunny: failed to get zone ID: %w", err)
 	}
-
+	record, err := client.DNSZone.AddDNSRecord(ctx, zoneID, recordOptions)
+	if err != nil {
+		return fmt.Errorf("bunny: failed to add TXT record: fqdn=%s, zoneID=%d: %w", ch.ResolvedFQDN, zoneID, err)
+	}
+	p.recordID = record.ID
 	return nil
 }
 
@@ -78,31 +68,20 @@ func (p *ProviderSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 // This is in order to facilitate multiple DNS validations for the same domain
 // concurrently.
 func (p *ProviderSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
-	domainAPI, err := p.getDomainAPI(ch)
+	ctx := context.Background()
+	domainName := ptr.Pointer(strings.TrimSuffix(ch.ResolvedZone, "."))
+	client, err := p.Client(ch)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get bunny client: %w", err)
 	}
-
-	request := &domain.UpdateDNSZoneRecordsRequest{
-		DNSZone: strings.TrimSuffix(ch.ResolvedZone, "."),
-		Changes: []*domain.RecordChange{
-			{
-				Delete: &domain.RecordChangeDelete{
-					IDFields: &domain.RecordIdentifier{
-						Name: strings.TrimSuffix(strings.TrimSuffix(ch.ResolvedFQDN, ch.ResolvedZone), "."),
-						Data: scw.StringPtr(strconv.Quote(ch.Key)),
-						Type: domain.RecordTypeTXT,
-					},
-				},
-			},
-		},
-	}
-
-	_, err = domainAPI.UpdateDNSZoneRecords(request)
+	zoneID, err := findZoneID(client, ctx, ptr.Deref(domainName))
 	if err != nil {
-		return fmt.Errorf("failed to update DNS zone recrds: %w", err)
+		return fmt.Errorf("bunny: failed to get zone ID: %w", err)
 	}
-
+	err = client.DNSZone.DeleteDNSRecord(ctx, zoneID, *p.recordID)
+	if err != nil {
+		return fmt.Errorf("bunny: failed to delete TXT record: fqdn=%s, zoneID=%d: %w", ch.ResolvedFQDN, zoneID, err)
+	}
 	return nil
 }
 
@@ -116,13 +95,10 @@ func (p *ProviderSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 // The stopCh can be used to handle early termination of the webhook, in cases
 // where a SIGTERM or similar signal is sent to the webhook process.
 func (p *ProviderSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
-
 	cl, err := kubernetes.NewForConfig(kubeClientConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get kubernetes client: %w", err)
 	}
-
-	p.client = cl
-
+	p.k8sClient = cl
 	return nil
 }

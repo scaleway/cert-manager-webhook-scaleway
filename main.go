@@ -5,7 +5,7 @@ import (
 
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 
-	"github.com/scaleway/cert-manager-webhook-scaleway/pkg/dns"
+	"github.com/arbreagile/cert-manager-webhook-bunny/pkg/dns"
 )
 
 // GroupName is the name under which the webhook will be available
