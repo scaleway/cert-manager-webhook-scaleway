@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	github.com/cert-manager/cert-manager v1.18.2
-	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.34
+	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.35
 	k8s.io/api v0.32.7
 	k8s.io/apiextensions-apiserver v0.32.7
 	k8s.io/apimachinery v0.32.7
