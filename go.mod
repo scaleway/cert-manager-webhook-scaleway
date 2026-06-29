@@ -3,7 +3,7 @@ module github.com/scaleway/cert-manager-webhook-scaleway
 go 1.25.0
 
 require (
-	github.com/cert-manager/cert-manager v1.20.2
+	github.com/cert-manager/cert-manager v1.20.3
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.36
 	k8s.io/api v0.35.2
 	k8s.io/apiextensions-apiserver v0.35.2
